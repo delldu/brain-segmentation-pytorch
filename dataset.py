@@ -8,6 +8,8 @@ from torch.utils.data import Dataset
 
 from utils import crop_sample, pad_sample, resize_sample, normalize_volume
 
+import pdb
+
 
 class BrainSegmentationDataset(Dataset):
     """Brain MRI dataset for FLAIR abnormality segmentation"""
@@ -22,7 +24,7 @@ class BrainSegmentationDataset(Dataset):
         image_size=256,
         subset="train",
         random_sampling=True,
-        validation_cases=10,
+        validation_cases=4,
         seed=42,
     ):
         assert subset in ["all", "train", "validation"]
@@ -30,7 +32,7 @@ class BrainSegmentationDataset(Dataset):
         # read images
         volumes = {}
         masks = {}
-        print("reading {} images...".format(subset))
+        print("reading {} images from {} ...".format(subset, images_dir))
         for (dirpath, dirnames, filenames) in os.walk(images_dir):
             image_slices = []
             mask_slices = []
@@ -47,8 +49,23 @@ class BrainSegmentationDataset(Dataset):
                 patient_id = dirpath.split("/")[-1]
                 volumes[patient_id] = np.array(image_slices[1:-1])
                 masks[patient_id] = np.array(mask_slices[1:-1])
+            # pdb.set_trace()
+            # (Pdb) pp filepath
+            # 'kaggle_3m_dev/TCGA_CS_5397_20010315/TCGA_CS_5397_20010315_22_mask.tif'
+            # (Pdb) pp len(image_slices), image_slices[0].shape
+            # (22, (256, 256, 3))
+            # (Pdb) pp len(mask_slices), mask_slices[0].shape
+            # (22, (256, 256))
+            # (Pdb) for k, v in volumes.items(): print(k, v.shape)
+            # TCGA_CS_5397_20010315 (20, 256, 256, 3)
 
         self.patients = sorted(volumes)
+        # pdb.set_trace()
+        # (Pdb) pp self.patients
+        # ['TCGA_CS_4941_19960909',
+        #  'TCGA_CS_4942_19970222',
+        # ...
+        #  'TCGA_DU_7010_19860307']
 
         # select cases to subset
         if not subset == "all":
@@ -61,23 +78,23 @@ class BrainSegmentationDataset(Dataset):
                     list(set(self.patients).difference(validation_patients))
                 )
 
-        print("preprocessing {} volumes...".format(subset))
+        print("preprocessing {} volumes, total {} patients ...".format(subset, len(volumes)))
         # create list of tuples (volume, mask)
         self.volumes = [(volumes[k], masks[k]) for k in self.patients]
 
-        print("cropping {} volumes...".format(subset))
+        print("  cropping {} volumes...".format(subset))
         # crop to smallest enclosing volume
         self.volumes = [crop_sample(v) for v in self.volumes]
 
-        print("padding {} volumes...".format(subset))
+        print("  padding {} volumes...".format(subset))
         # pad to square
         self.volumes = [pad_sample(v) for v in self.volumes]
 
-        print("resizing {} volumes...".format(subset))
+        print("  resizing {} volumes...".format(subset))
         # resize
         self.volumes = [resize_sample(v, size=image_size) for v in self.volumes]
 
-        print("normalizing {} volumes...".format(subset))
+        print("  normalizing {} volumes...".format(subset))
         # normalize channel-wise
         self.volumes = [(normalize_volume(v), m) for v, m in self.volumes]
 
@@ -131,6 +148,9 @@ class BrainSegmentationDataset(Dataset):
 
         image_tensor = torch.from_numpy(image.astype(np.float32))
         mask_tensor = torch.from_numpy(mask.astype(np.float32))
+
+        # print(image_tensor.shape, mask_tensor.shape)
+        # torch.Size([3, 256, 256]) torch.Size([1, 256, 256])
 
         # return tensors
         return image_tensor, mask_tensor

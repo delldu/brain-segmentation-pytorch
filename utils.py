@@ -3,30 +3,50 @@ from medpy.filter.binary import largest_connected_component
 from skimage.exposure import rescale_intensity
 from skimage.transform import resize
 
+import pdb
 
+# Dice（s1,s2）=2*comm(s1,s2)/(leng(s1)+leng(s2))
 def dsc(y_pred, y_true, lcc=True):
     if lcc and np.any(y_pred):
         y_pred = np.round(y_pred).astype(int)
         y_true = np.round(y_true).astype(int)
         y_pred = largest_connected_component(y_pred)
+
     return np.sum(y_pred[y_true == 1]) * 2.0 / (np.sum(y_pred) + np.sum(y_true))
 
 
 def crop_sample(x):
     volume, mask = x
+    # (Pdb) volume.shape
+    # (20, 256, 256, 3)
+
     volume[volume < np.max(volume) * 0.1] = 0
     z_projection = np.max(np.max(np.max(volume, axis=-1), axis=-1), axis=-1)
+    # (Pdb) np.max(volume, axis=-1).shape
+    # (20, 256, 256) == > B
     z_nonzero = np.nonzero(z_projection)
     z_min = np.min(z_nonzero)
     z_max = np.max(z_nonzero) + 1
+
     y_projection = np.max(np.max(np.max(volume, axis=0), axis=-1), axis=-1)
+    # (Pdb) np.max(volume, axis=0).shape
+    # (256, 256, 3) ==> H
     y_nonzero = np.nonzero(y_projection)
     y_min = np.min(y_nonzero)
     y_max = np.max(y_nonzero) + 1
+
     x_projection = np.max(np.max(np.max(volume, axis=0), axis=0), axis=-1)
+    # (Pdb) np.max(volume, axis=0).shape
+    # (256, 256, 3) ==> W
     x_nonzero = np.nonzero(x_projection)
     x_min = np.min(x_nonzero)
     x_max = np.max(x_nonzero) + 1
+    # pdb.set_trace()
+    # (Pdb) pp type(x), x[0].shape, x[1].shape
+    # (<class 'tuple'>, (20, 256, 256, 3), (20, 256, 256))
+
+    # (Pdb) volume[z_min:z_max, y_min:y_max, x_min:x_max].shape
+    # (20, 238, 202, 3)
     return (
         volume[z_min:z_max, y_min:y_max, x_min:x_max],
         mask[z_min:z_max, y_min:y_max, x_min:x_max],
@@ -37,6 +57,9 @@ def pad_sample(x):
     volume, mask = x
     a = volume.shape[1]
     b = volume.shape[2]
+    # pdb.set_trace()
+    # (Pdb) pp volume.shape
+    # (20, 238, 202, 3)
     if a == b:
         return volume, mask
     diff = (max(a, b) - min(a, b)) / 2.0
@@ -71,6 +94,10 @@ def resize_sample(x, size=256):
         cval=0,
         anti_aliasing=False,
     )
+    # pdb.set_trace()
+    # (Pdb) pp volume.shape
+    # (20, 256, 256, 3)
+
     return volume, mask
 
 
@@ -81,6 +108,7 @@ def normalize_volume(volume):
     m = np.mean(volume, axis=(0, 1, 2))
     s = np.std(volume, axis=(0, 1, 2))
     volume = (volume - m) / s
+
     return volume
 
 
@@ -114,4 +142,8 @@ def outline(image, mask, color):
     for y, x in zip(yy, xx):
         if 0.0 < np.mean(mask[max(0, y - 1) : y + 2, max(0, x - 1) : x + 2]) < 1.0:
             image[max(0, y) : y + 1, max(0, x) : x + 1] = color
+    # pdb.set_trace()
+    # (Pdb) pp type(image), image.shape, image.min(), image.max()
+    # (<class 'numpy.ndarray'>, (256, 256, 3), 0, 255)
+    
     return image

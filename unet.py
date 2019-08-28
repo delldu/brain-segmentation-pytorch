@@ -3,6 +3,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
+import pdb
 
 class UNet(nn.Module):
 
@@ -42,6 +43,10 @@ class UNet(nn.Module):
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
 
+        # pdb.set_trace()
+        # (conv): Conv2d(32, 1, kernel_size=(1, 1), stride=(1, 1))
+
+
     def forward(self, x):
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
@@ -62,6 +67,15 @@ class UNet(nn.Module):
         dec1 = self.upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
+
+        # pdb.set_trace()
+        # (Pdb) pp x.shape
+        # torch.Size([32, 3, 256, 256])
+        # (Pdb) pp dec1.shape
+        # torch.Size([32, 32, 256, 256])
+        # (Pdb) pp self.conv(dec1).shape
+        # torch.Size([32, 1, 256, 256])
+
         return torch.sigmoid(self.conv(dec1))
 
     @staticmethod
@@ -96,3 +110,4 @@ class UNet(nn.Module):
                 ]
             )
         )
+

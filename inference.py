@@ -14,6 +14,8 @@ from dataset import BrainSegmentationDataset as Dataset
 from unet import UNet
 from utils import dsc, gray2rgb, outline
 
+import pdb
+import time
 
 def main(args):
     makedirs(args)
@@ -46,6 +48,17 @@ def main(args):
             x_np = x.detach().cpu().numpy()
             input_list.extend([x_np[s] for s in range(x_np.shape[0])])
 
+            # pdb.set_trace()
+            # (Pdb) pp type(input_list), len(input_list), input_list[0].shape
+            # (<class 'list'>, 64, (3, 256, 256))            
+            # (Pdb) pp y_true.dtype, y_true.shape, x.dtype, x.shape
+            # (torch.float32,
+            #  torch.Size([32, 1, 256, 256]),
+            #  torch.float32,
+            #  torch.Size([32, 3, 256, 256]))
+            # (Pdb) 
+
+
     volumes = postprocess_per_volume(
         input_list,
         pred_list,
@@ -70,7 +83,6 @@ def main(args):
             filename = "{}-{}.png".format(p, str(s).zfill(2))
             filepath = os.path.join(args.predictions, filename)
             imsave(filepath, image)
-
 
 def data_loader(args):
     dataset = Dataset(
@@ -100,6 +112,10 @@ def postprocess_per_volume(
         volume_true = np.array(true_list[index : index + num_slices[p]])
         volumes[patients[p]] = (volume_in, volume_pred, volume_true)
         index += num_slices[p]
+    # pdb.set_trace()
+    # (Pdb) pp type(volumes), len(volumes), volumes['TCGA_DU_7010_19860307'][0].shape
+    # (<class 'dict'>, 10, (55, 3, 256, 256))
+
     return volumes
 
 
@@ -181,4 +197,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    start = time.time()
     main(args)
+    spend = time.time() - start
+    print("Total spend {} seconds.".format(spend))

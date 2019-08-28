@@ -15,17 +15,26 @@ from transform import transforms
 from unet import UNet
 from utils import log_images, dsc
 
+import pdb
 
 def main(args):
     makedirs(args)
     snapshotargs(args)
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
 
+    unet = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
+    if os.path.exists("weights/unet.pt"):
+        state_dict = torch.load("weights/unet.pt", map_location=device)
+        unet.load_state_dict(state_dict)
+    else:
+        print("---------------------- NOT FOUND ----------------------")
+
+    unet.to(device)
+
+
     loader_train, loader_valid = data_loaders(args)
     loaders = {"train": loader_train, "valid": loader_valid}
 
-    unet = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
-    unet.to(device)
 
     dsc_loss = DiceLoss()
     best_validation_dsc = 0.0
@@ -59,6 +68,9 @@ def main(args):
 
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
+                    # pdb.set_trace()
+                    # (Pdb) y_pred.shape
+                    # torch.Size([6, 1, 256, 256])
 
                     loss = dsc_loss(y_pred, y_true)
 
